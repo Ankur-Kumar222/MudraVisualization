@@ -1,5 +1,5 @@
 # MudraVisualisation
-
+Group Project by: Ankur Kumar and Mahika Nair
 This project focuses on building a hand gesture recognition system, specifically targeting Indian classical dance mudras. The notebooks and scripts provided in this repository guide you through the process of collecting, preprocessing, training, and evaluating a model for recognizing these intricate hand movements in real-time video.
 
 There are 30 Indian Classical Mudras being classified here (the Asamyukta mudras):
