@@ -1,9 +1,72 @@
-# MudraVisualisation
+# MudraVisualization
+
 Group Project by: Ankur Kumar and Mahika Nair
 
-This project focuses on building a hand gesture recognition system, specifically targeting Indian classical dance mudras. The notebooks and scripts provided in this repository guide you through the process of collecting, preprocessing, training, and evaluating a model for recognizing these intricate hand movements in real-time video.
+Indian classical dance mudra (hand gesture) recognition using YOLOv8 image classification and MediaPipe hand detection. Classifies 30 Asamyukta (single-hand) mudras in real-time video.
 
-There are 30 Indian Classical Mudras being classified here (the Asamyukta mudras):
+## Quick Start (Real-Time Detection)
+
+Requires Python 3.12 (MediaPipe does not yet support 3.13+).
+
+```bash
+# Create a virtual environment with uv
+uv venv --python 3.12
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install opencv-python mediapipe ultralytics
+
+# Run the live demo
+python mudra_live.py
+```
+
+A webcam window will open. Hold up a hand gesture to see predictions. Press **Esc** to quit.
+
+> **macOS note:** If no window appears, check your Dock for the Python icon and click it. Your terminal app also needs Camera permission under System Settings > Privacy & Security > Camera.
+
+Alternatively, you can run the notebook version:
+
+```bash
+uv pip install jupyter
+jupyter notebook VideoYOLO.ipynb
+```
+
+## Full Setup (Training from Scratch)
+
+```bash
+uv pip install opencv-python mediapipe ultralytics scikit-learn matplotlib numpy pillow tensorflow
+```
+
+## Project Structure
+
+```
+mudra_live.py            # Standalone real-time mudra recognition (recommended)
+VideoYOLO.ipynb          # Notebook version of real-time recognition
+collect_imgs.py          # Step 1: Capture hand images from webcam (press P to start each class)
+Image_cropper.py         # Step 2: Crop hands using MediaPipe landmark detection
+Image_Flipper.py         # Step 3: Augment dataset with horizontal flips
+YOLO_Model.ipynb         # Step 4: Train YOLOv8 classifier (yolov8n-cls)
+Metrics_yolo.ipynb       # Step 5: Evaluate model (accuracy, precision, recall, confusion matrix)
+runs/classify/train3/weights/best.pt  # Trained model weights (required for inference)
+```
+
+## Pipeline Details
+
+1. **Data collection** (`collect_imgs.py`): Captures webcam frames into `Captured_Hands/` with 30 class subdirectories. Default: 20 images per class. Press P to start each class.
+2. **Cropping** (`Image_cropper.py`): Uses MediaPipe to detect hand landmarks, crops a square region around the hand. Input: `Captured_Hands_More/`, Output: `Captured_Hands_Cropped_More/`.
+3. **Augmentation** (`Image_Flipper.py`): Horizontally flips all cropped images, saving with `flipped_` prefix in the same directory. Doubles dataset size.
+4. **Training** (`YOLO_Model.ipynb`): Fine-tunes `yolov8n-cls.pt` (pretrained on ImageNet) on the mudra dataset. Trains at 64x64 resolution.
+5. **Evaluation** (`Metrics_yolo.ipynb`): Computes accuracy (achieved 80%), per-class precision/recall/F1, and confusion matrix using scikit-learn.
+6. **Inference** (`mudra_live.py` / `VideoYOLO.ipynb`): MediaPipe detects hands in webcam frames, crops ROI, YOLO classifies the mudra. Supports 1-2 simultaneous hands.
+
+## Configuration
+
+Both `mudra_live.py` and `VideoYOLO.ipynb` have a `WEBCAM_INDEX` variable at the top. Change it to `1` if you have an external webcam.
+
+If you retrain the model, update the model path and regenerate the `labels_dict` mapping to match your new training run's class ordering (check `runs/classify/trainN/`).
+
+## 30 Mudra Classes (Asamyukta)
+
 1. Pataka
 2. Tripataka
 3. Ardhapataka
@@ -35,35 +98,10 @@ There are 30 Indian Classical Mudras being classified here (the Asamyukta mudras
 29. Tamrachuda
 30. Trishula
 
+## Troubleshooting
 
-## collect_imgs.py (credits: https://www.youtube.com/watch?v=MJCSjXepaAM)
-
-This script captures images from a live video feed using OpenCV. It allows the user to collect a dataset of hand images for various classes. The number of classes (n), images per class (dataset_size), and other parameters can be adjusted.
-
-## image_cropper.py
-
-This script uses the MediaPipe library to crop hand images captured by the collect_imgs.py script. It detects hand landmarks and crops the images around the detected hand region. Cropped images are then saved to a specified output directory.
-
-## image_flipper.py
-
-This script takes the cropped hand images from the image_cropper.py script and creates horizontally flipped versions. The flipped images are saved with a 'flipped_' prefix in the same directory.
-
-## YOLO_model.ipynb (credit: https://docs.ultralytics.com/tasks/classify/#models)
-
-This Jupyter notebook demonstrates the usage of the Ultralytics YOLO (You Only Look Once) framework for training a model on hand images. It uses a pre-trained YOLO model and fine-tunes it on a specified dataset, showing how to train the model for a certain number of epochs and image size.
-
-## Metrics_YOLO.ipynb
-
-This Jupyter notebook evaluates the trained YOLO model from YOLO_model.ipynb. It calculates and displays accuracy, precision, recall, F1-score, and confusion matrix using scikit-learn metrics from the test set. It also maps the predicted class labels to the original class labels based on a provided mapping.
-
-## VideoYOLO.ipynb
-
-This Jupyter notebook integrates hand detection using the MediaPipe library with a pre-trained YOLO model for mudra (hand gesture) recognition. It captures live video, detects hands, crops the region of interest, and predicts the mudra using the YOLO model. Predictions are displayed in real-time along with bounding boxes on the detected hands. Here are the two essential functions:
-
-### predict_from_video(img)
-This function takes a frame from the video feed, saves it as a temporary image file, and utilizes the pre-trained YOLO model to predict the class (mudra) of the hand in the image. The predicted class is returned.
-
-### box_maker(mhl, h, w)
-This function processes the detected hand landmarks (mhl) using the MediaPipe library. It calculates the bounding box coordinates for the hands in the frame. The coordinates are normalized and then converted to the absolute dimensions of the frame. The function returns the coordinates for both the rectangular box and the square box around the Region of Interest (ROI).
-
-## Note: To run the video detection directly, all you need is the VideoYOLO.ipynb and the '/runs/classify/train3/weights/best.pt' file.
+- **No webcam window appears (macOS):** Check your Dock for the Python icon. Ensure your terminal has Camera permission in System Settings.
+- **`module 'mediapipe' has no attribute 'solutions'`:** You need Python 3.12. MediaPipe 0.10.21+ (required for Python 3.13) removed the legacy `mp.solutions` API this project uses.
+- **No webcam detected:** Try changing `WEBCAM_INDEX` to `0`, `1`, or `2`.
+- **MediaPipe not detecting hands:** Ensure good lighting and hands are clearly visible.
+- **Wrong predictions after retraining:** The `labels_dict` mapping must match your new training run's class ordering.
